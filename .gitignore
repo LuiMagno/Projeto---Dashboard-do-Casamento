@@ -1,0 +1,26 @@
+# Ambiente virtual deste projeto
+dashboard_casamento_env/
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.Python
+*.so
+.eggs/
+*.egg-info/
+*.egg
+
+# Streamlit
+.streamlit/secrets.toml
+
+# Chave Google Service Account (não fazer commit)
+projeto-dashboard-casamento-*.json
+credentials.json
+*-credentials*.json
+
+# IDE / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
