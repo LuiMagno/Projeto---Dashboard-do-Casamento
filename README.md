@@ -68,6 +68,10 @@ A Google Sheet deve ter (ou a app cria) 5 folhas com os nomes: **Convidados**, *
 
 ## Deploy no Streamlit Community Cloud (gratuito)
 
+Guia passo a passo (primeiro push no GitHub, Cloud e Secrets): ver **[DEPLOY_GITHUB_STREAMLIT.md](DEPLOY_GITHUB_STREAMLIT.md)**.
+
+Resumo:
+
 1. Faz push deste projeto para um repositório no GitHub (público ou privado).
 2. Entra em [share.streamlit.io](https://share.streamlit.io) e faz login (por exemplo com GitHub).
 3. Clica em **New app**.
@@ -76,5 +80,6 @@ A Google Sheet deve ter (ou a app cria) 5 folhas com os nomes: **Convidados**, *
    - **Branch:** normalmente `main`
    - **Main file path:** `app.py`
 5. Clica em **Deploy**. A app fica disponível em `https://<nome>.streamlit.app`.
+6. Em **Settings** → **Secrets**, configura `google_credentials_json` (e opcionalmente `google_spreadsheet_id` para pré-preencher o ID da folha na app).
 
 Nota: No plano gratuito os dados não ficam guardados no servidor entre sessões. Usa "Exportar tudo" para guardar um backup e "Importar" quando abrires a app noutro dispositivo ou após a app ter estado parada.
