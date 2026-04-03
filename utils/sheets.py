@@ -16,6 +16,9 @@ from .data import (
     KEY_TAREFAS,
     KEY_FORNECEDORES,
     KEY_CRONOGRAMA,
+    ORCAMENTO_COL_A_SER_PAGO,
+    ORCAMENTO_NUMERIC_COLS,
+    orcamento_para_export,
 )
 
 # Nomes das folhas (abas) na Google Sheet — devem coincidir com estes nomes
@@ -128,7 +131,7 @@ def _ensure_worksheets(sh):
     existing = {ws.title for ws in sh.worksheets()}
     for name in SHEET_NAMES.values():
         if name not in existing:
-            sh.add_worksheet(title=name, rows=200, cols=20)
+            sh.add_worksheet(title=name, rows=200, cols=30)
             existing.add(name)
 
 
@@ -149,7 +152,7 @@ def _load_from_sheets_impl(spreadsheet_id: str) -> dict:
                 continue
             df = pd.DataFrame(rows[1:], columns=rows[0])
             if key == KEY_ORCAMENTO and len(df) > 0:
-                for col in ["Valor previsto", "Valor real"]:
+                for col in ORCAMENTO_NUMERIC_COLS + [ORCAMENTO_COL_A_SER_PAGO]:
                     if col in df.columns:
                         df[col] = pd.to_numeric(df[col], errors="coerce").fillna(0)
             result[key] = df
@@ -183,6 +186,8 @@ def save_to_sheets(spreadsheet_id: str, data: dict) -> None:
         df = data[key]
         if df is None or not isinstance(df, pd.DataFrame):
             continue
+        if key == KEY_ORCAMENTO:
+            df = orcamento_para_export(df)
         ws = sh.worksheet(sheet_name)
         # Escrever cabeçalhos + dados
         values = [df.columns.tolist()] + df.astype(str).fillna("").values.tolist()
