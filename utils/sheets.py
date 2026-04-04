@@ -5,6 +5,7 @@ Credenciais: st.secrets ou ficheiro JSON na pasta do projeto.
 """
 import json
 import os
+import re
 from pathlib import Path
 from typing import Optional
 
@@ -36,6 +37,35 @@ SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive",
 ]
+
+
+def _parse_google_credentials_json(raw: str) -> dict:
+    """
+    Faz parse do JSON da conta de serviço. Corrige paste multilinha onde o PEM
+    em "private_key" tem quebras de linha reais (JSON inválido → Invalid control character).
+    """
+    s = (raw or "").strip().replace("\ufeff", "")
+    if not s:
+        raise json.JSONDecodeError("google_credentials_json vazio", s, 0)
+    err: Optional[json.JSONDecodeError] = None
+    try:
+        return json.loads(s)
+    except json.JSONDecodeError as e:
+        err = e
+    m = re.search(
+        r'("private_key"\s*:\s*")(.+?)(",\s*"client_email"\s*:)',
+        s,
+        re.DOTALL,
+    )
+    if m:
+        prefix_open, pem_body, rest = m.group(1), m.group(2), m.group(3)
+        escaped = json.dumps(pem_body)[1:-1]
+        fixed = s[: m.start()] + prefix_open + escaped + rest + s[m.end() :]
+        try:
+            return json.loads(fixed)
+        except json.JSONDecodeError:
+            pass
+    raise err
 
 
 def _get_credentials_source():
@@ -83,7 +113,12 @@ def _get_credentials_source():
             try:
                 raw = st.secrets["google_credentials_json"]
                 if raw is not None and str(raw).strip():
-                    return (None, json.loads(raw if isinstance(raw, str) else str(raw)))
+                    return (
+                        None,
+                        _parse_google_credentials_json(
+                            raw if isinstance(raw, str) else str(raw)
+                        ),
+                    )
             except Exception:
                 pass
         if "google_credentials" in st.secrets:
@@ -151,10 +186,14 @@ def credentials_secrets_hint() -> Optional[str]:
         raw = st.secrets["google_credentials_json"]
         if raw is None or (isinstance(raw, str) and not raw.strip()):
             return "`google_credentials_json` está vazio."
-        json.loads(raw if isinstance(raw, str) else str(raw))
+        _parse_google_credentials_json(raw if isinstance(raw, str) else str(raw))
         return None
     except json.JSONDecodeError as e:
-        return f"O valor de `google_credentials_json` não é JSON válido: {e}"
+        return (
+            f"O valor de `google_credentials_json` não é JSON válido: {e}. "
+            "Se colaste o JSON com várias linhas, experimenta **minificar** numa só linha "
+            "(ou faz deploy da versão mais recente do código, que tenta corrigir PEM multilinha)."
+        )
 
 
 def _get_client():

@@ -34,6 +34,8 @@ google_credentials_json = '''
 # google_spreadsheet_id = "1abc...xyz"
 ```
 
+Erro nos logs tipo **`Invalid control character`**: o JSON colado tem **Enter real** dentro do campo `private_key` (JSON não permite). Soluções: (1) minificar o `.json` da Google **numa única linha** e colar como `google_credentials_json = "{...}"`; (2) usar a versão atual do código, que tenta corrigir PEM multilinha em `utils/sheets.py`.
+
 4. Na Google Sheet, partilha a folha com o **client_email** da conta de serviço (permissão **Editor**).
 
 ## 3. Verificação (smoke test)
