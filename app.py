@@ -102,7 +102,12 @@ if spreadsheet_id.strip():
     st.session_state["spreadsheet_id"] = spreadsheet_id.strip()
 
 try:
-    from utils.sheets import sheets_available, load_from_sheets, save_to_sheets
+    from utils.sheets import (
+        credentials_secrets_hint,
+        load_from_sheets,
+        save_to_sheets,
+        sheets_available,
+    )
 
     if sheets_available():
         col_gs1, col_gs2 = st.columns(2)
@@ -136,6 +141,22 @@ try:
                 except Exception as e:
                     st.error(str(e))
     else:
+        has_sheet_id = bool(spreadsheet_id.strip()) or (
+            hasattr(st, "secrets")
+            and st.secrets
+            and str(st.secrets.get("google_spreadsheet_id", "")).strip()
+        )
+        if has_sheet_id:
+            st.warning(
+                "O **ID da Google Sheet** já está definido, mas a app **não conseguiu ler as credenciais** "
+                "(`google_credentials_json` nos Secrets, ou JSON inválido após colar). "
+                "Confirma que a chave se chama exatamente `google_credentials_json`, que o valor é JSON válido "
+                "(experimenta uma única linha minificada), guarda os Secrets e reinicia a app. "
+                "Vê também os **logs** da app no Streamlit Cloud se o erro persistir."
+            )
+            hint = credentials_secrets_hint()
+            if hint:
+                st.error(hint)
         with st.expander("Como configurar o Google Sheets"):
             st.markdown("""
 1. **Google Cloud:** Cria um projeto em [Google Cloud Console](https://console.cloud.google.com/), ativa a **Google Sheets API** e a **Google Drive API**.
@@ -143,7 +164,7 @@ try:
 3. **Partilha a folha:** Abre a tua Google Sheet e partilha-a (botão Partilhar) com o **email da conta de serviço** (ex.: `xxx@yyy.iam.gserviceaccount.com`) com permissão **Editor**.
 4. **Secrets (local):** Cria `.streamlit/secrets.toml` e cola o conteúdo do JSON sob a chave `google_credentials_json` (como string) ou usa as chaves individuais em `[google_credentials]`.
 5. **Streamlit Cloud:** No deploy, em *Settings* → *Secrets*, adiciona a mesma estrutura.
-6. Reinicia a app e preenche o **ID da Google Sheet** (no URL: `.../d/ID_DA_FOLHA/edit`).
+6. O **ID da folha** vem do URL do Google Sheets (`.../d/ID_DA_FOLHA/edit`) ou da chave opcional `google_spreadsheet_id` nos Secrets — não do URL `streamlit.app`.
             """)
 except ImportError:
     st.warning("Para usar Google Sheets, instala: `pip install gspread google-auth`")

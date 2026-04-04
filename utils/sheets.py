@@ -6,6 +6,7 @@ Credenciais: st.secrets ou ficheiro JSON na pasta do projeto.
 import json
 import os
 from pathlib import Path
+from typing import Optional
 
 import pandas as pd
 import streamlit as st
@@ -78,25 +79,53 @@ def _get_credentials_source():
 
     # 4. Dict a partir de secrets (Streamlit Cloud / secrets.toml com JSON colado)
     if hasattr(st, "secrets") and st.secrets:
-        try:
-            if "google_credentials_json" in st.secrets:
-                return (None, json.loads(st.secrets["google_credentials_json"]))
-            if "google_credentials" in st.secrets:
+        if "google_credentials_json" in st.secrets:
+            try:
+                raw = st.secrets["google_credentials_json"]
+                if raw is not None and str(raw).strip():
+                    return (None, json.loads(raw if isinstance(raw, str) else str(raw)))
+            except Exception:
+                pass
+        if "google_credentials" in st.secrets:
+            try:
                 return (None, dict(st.secrets["google_credentials"]))
-        except Exception:
-            pass
+            except Exception:
+                pass
 
     return (None, None)
 
 
 def _normalize_private_key(creds_dict: dict) -> dict:
-    """Corrige a chave privada quando usamos dict (secrets)."""
+    """Corrige a chave privada quando usamos dict (secrets) ou JSON colado."""
     if not creds_dict or "private_key" not in creds_dict:
         return creds_dict
     key = creds_dict.get("private_key", "")
     if not isinstance(key, str):
         return creds_dict
-    key = key.replace("\\n", "\n").replace("\t", "")
+    key = key.strip().replace("\ufeff", "")
+    while "\\n" in key:
+        key = key.replace("\\n", "\n")
+    key = key.replace("\r\n", "\n").replace("\r", "\n").replace("\t", "")
+    # PEM em base64url (alguns copiar/colar) usa '-' e '_' em vez de '+' e '/'
+    if "_" in key and "BEGIN PRIVATE KEY" in key:
+        lines = key.split("\n")
+        fixed = []
+        in_body = False
+        for line in lines:
+            s = line.strip()
+            if "BEGIN PRIVATE KEY" in s:
+                in_body = True
+                fixed.append(line)
+                continue
+            if "END PRIVATE KEY" in s:
+                in_body = False
+                fixed.append(line)
+                continue
+            if in_body and s and "_" in s and not s.startswith("-"):
+                fixed.append(s.replace("-", "+").replace("_", "/"))
+            else:
+                fixed.append(line)
+        key = "\n".join(fixed)
     out = dict(creds_dict)
     out["private_key"] = key
     return out
@@ -106,6 +135,26 @@ def sheets_available() -> bool:
     """Indica se as credenciais do Google Sheets estão configuradas."""
     path, data = _get_credentials_source()
     return path is not None or data is not None
+
+
+def credentials_secrets_hint() -> Optional[str]:
+    """
+    Se só faltar/estiver inválido o JSON em Secrets, devolve uma dica curta (sem expor segredos).
+    """
+    if not hasattr(st, "secrets") or not st.secrets:
+        return None
+    if "google_credentials_json" not in st.secrets:
+        if "google_credentials" in st.secrets:
+            return None
+        return 'Não existe a chave `google_credentials_json` nos Secrets (nem `[google_credentials]`).'
+    try:
+        raw = st.secrets["google_credentials_json"]
+        if raw is None or (isinstance(raw, str) and not raw.strip()):
+            return "`google_credentials_json` está vazio."
+        json.loads(raw if isinstance(raw, str) else str(raw))
+        return None
+    except json.JSONDecodeError as e:
+        return f"O valor de `google_credentials_json` não é JSON válido: {e}"
 
 
 def _get_client():
@@ -118,7 +167,9 @@ def _get_client():
         return None
 
     if path is not None:
-        credentials = Credentials.from_service_account_file(str(path), scopes=SCOPES)
+        creds_dict = json.loads(Path(path).read_text(encoding="utf-8"))
+        creds_dict = _normalize_private_key(creds_dict)
+        credentials = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
     else:
         creds_dict = _normalize_private_key(creds_dict)
         credentials = Credentials.from_service_account_info(creds_dict, scopes=SCOPES)
