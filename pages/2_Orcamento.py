@@ -20,6 +20,7 @@ from utils.data import (
     orcamento_para_export,
     orcamento_data_editor_defaults,
 )
+from utils.sheets import render_save_to_google_sheets_button
 
 
 def _fmt_brl(v: float) -> str:
@@ -210,6 +211,8 @@ if len(df_base) > 0:
         st.metric("Total pago (já pago)", _fmt_brl(total_pago))
     with m3:
         st.metric("Total a pagar", _fmt_brl(total_a_pagar), help="Soma da coluna A ser pago (Total a Pagar − Total Pago, por linha).")
+
+render_save_to_google_sheets_button("orcamento")
 
 st.divider()
 st.subheader("Exportar esta secção")

@@ -8,7 +8,9 @@ from utils.data import (
     init_session_state,
     KEY_CONVIDADOS,
     FILE_CONVIDADOS,
+    apply_data_editor_changes,
 )
+from utils.sheets import render_save_to_google_sheets_button
 
 st.set_page_config(page_title="Convidados | Dashboard Casamento", page_icon="👥", layout="wide")
 init_session_state()
@@ -16,13 +18,21 @@ init_session_state()
 st.title("👥 Convidados")
 st.caption("Adiciona e edita convidados. Confirmação: Sim, Não ou Pendente.")
 
-df = st.session_state[KEY_CONVIDADOS]
+def _apply_convidados():
+    state = st.session_state.get(f"editor_{KEY_CONVIDADOS}")
+    defaults = {"Confirmação": "Pendente"}
+    apply_data_editor_changes(KEY_CONVIDADOS, state if isinstance(state, dict) else {}, default_value_for_new_rows=defaults)
 
-edited = st.data_editor(
+
+df = st.session_state[KEY_CONVIDADOS].reset_index(drop=True)
+
+st.data_editor(
     df,
     key=f"editor_{KEY_CONVIDADOS}",
     use_container_width=True,
     num_rows="dynamic",
+    hide_index=True,
+    on_change=_apply_convidados,
     column_config={
         "Confirmação": st.column_config.SelectboxColumn(
             "Confirmação",
@@ -32,9 +42,6 @@ edited = st.data_editor(
         ),
     },
 )
-
-if edited is not None:
-    st.session_state[KEY_CONVIDADOS] = edited
 
 # Resumos
 if len(st.session_state[KEY_CONVIDADOS]) > 0:
@@ -48,6 +55,8 @@ if len(st.session_state[KEY_CONVIDADOS]) > 0:
         st.metric("Não", len(c[c["Confirmação"].astype(str).str.strip().str.lower() == "não"]))
     with col4:
         st.metric("Pendente", len(c[c["Confirmação"].astype(str).str.strip().str.lower() == "pendente"]))
+
+render_save_to_google_sheets_button("convidados")
 
 st.divider()
 st.subheader("Exportar esta secção")

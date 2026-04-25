@@ -286,3 +286,58 @@ def save_to_sheets(spreadsheet_id: str, data: dict) -> None:
             ws.update("A1", values)
     # Invalidar cache para o próximo "Carregar" trazer dados atualizados
     load_from_sheets.clear()
+
+
+def _resolved_spreadsheet_id() -> str:
+    sid = str(st.session_state.get("spreadsheet_id", "")).strip()
+    if sid:
+        return sid
+    if hasattr(st, "secrets") and st.secrets and "google_spreadsheet_id" in st.secrets:
+        return str(st.secrets.get("google_spreadsheet_id", "")).strip()
+    return ""
+
+
+def _payload_all_sections() -> dict:
+    return {
+        KEY_CONVIDADOS: st.session_state[KEY_CONVIDADOS],
+        KEY_ORCAMENTO: st.session_state[KEY_ORCAMENTO],
+        KEY_TAREFAS: st.session_state[KEY_TAREFAS],
+        KEY_FORNECEDORES: st.session_state[KEY_FORNECEDORES],
+        KEY_CRONOGRAMA: st.session_state[KEY_CRONOGRAMA],
+    }
+
+
+def render_save_to_google_sheets_button(page_slug: str) -> None:
+    """
+    Botão para gravar na Google Sheet o estado atual de todas as secções.
+    page_slug: sufixo único para st.button (ex.: 'convidados').
+    """
+    if not sheets_available():
+        st.caption(
+            "🔗 Para gravar na nuvem, configura credenciais Google na **página inicial**."
+        )
+        return
+    sid = _resolved_spreadsheet_id()
+    if not sid:
+        st.caption(
+            "💡 Define o **ID da Google Sheet** na página inicial ou `google_spreadsheet_id` nos Secrets."
+        )
+        return
+    col_btn, col_txt = st.columns([1, 2])
+    with col_btn:
+        save = st.button(
+            "Guardar no Google Sheets",
+            key=f"gs_page_save_{page_slug}",
+            type="primary",
+            help="Grava todas as secções desta sessão na folha (não só esta página).",
+        )
+    with col_txt:
+        st.caption(
+            "Grava **todas** as abas: Convidados, Orçamento, Tarefas, Fornecedores e Cronograma."
+        )
+    if save:
+        try:
+            save_to_sheets(sid, _payload_all_sections())
+            st.success("Guardado no Google Sheets.")
+        except Exception as e:
+            st.error(str(e))

@@ -10,6 +10,7 @@ from utils.data import (
     FILE_TAREFAS,
     apply_data_editor_changes,
 )
+from utils.sheets import render_save_to_google_sheets_button
 
 st.set_page_config(page_title="Tarefas | Dashboard Casamento", page_icon="✅", layout="wide")
 init_session_state()
@@ -43,6 +44,8 @@ c = st.session_state[KEY_TAREFAS]
 if len(c) > 0 and "Concluída" in c.columns:
     concl = (c["Concluída"].astype(str).str.strip().str.lower() == "sim").sum()
     st.metric("Concluídas", f"{concl} / {len(c)}")
+
+render_save_to_google_sheets_button("tarefas")
 
 st.divider()
 st.subheader("Exportar esta secção")

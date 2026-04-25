@@ -10,6 +10,7 @@ from utils.data import (
     FILE_FORNECEDORES,
     apply_data_editor_changes,
 )
+from utils.sheets import render_save_to_google_sheets_button
 
 st.set_page_config(page_title="Fornecedores | Dashboard Casamento", page_icon="🏪", layout="wide")
 init_session_state()
@@ -84,6 +85,8 @@ st.data_editor(
 c = st.session_state[KEY_FORNECEDORES]
 if len(c) > 0 and "Utilizado" in c.columns:
     st.metric("Total de fornecedores", len(c))
+
+render_save_to_google_sheets_button("fornecedores")
 
 st.divider()
 st.subheader("Exportar esta secção")

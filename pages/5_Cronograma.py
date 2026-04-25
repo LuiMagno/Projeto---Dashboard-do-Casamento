@@ -11,6 +11,7 @@ from utils.data import (
     FILE_CRONOGRAMA,
     apply_data_editor_changes,
 )
+from utils.sheets import render_save_to_google_sheets_button
 
 st.set_page_config(page_title="Cronograma | Dashboard Casamento", page_icon="📅", layout="wide")
 init_session_state()
@@ -41,6 +42,8 @@ st.data_editor(
 c = st.session_state[KEY_CRONOGRAMA]
 if len(c) > 0 and "Hora" in c.columns:
     st.metric("Total de entradas", len(c))
+
+render_save_to_google_sheets_button("cronograma")
 
 st.divider()
 st.subheader("Exportar esta secção")

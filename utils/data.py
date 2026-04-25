@@ -171,6 +171,7 @@ def _orcamento_row(
 
 # Colunas esperadas por tabela (para sanitizar e evitar coluna "index" do data_editor)
 COLUNAS_ESPERADAS = {
+    KEY_CONVIDADOS: ["Nome", "Contacto", "Confirmação", "Mesa", "Notas"],
     KEY_TAREFAS: ["Tarefa", "Responsável", "Data limite", "Concluída"],
     KEY_FORNECEDORES: ["Nome", "Serviço", "Contacto", "Preço", "Utilizado", "Notas"],
     KEY_CRONOGRAMA: ["Hora", "Atividade", "Local", "Notas"],
