@@ -16,7 +16,10 @@ st.set_page_config(page_title="Convidados | Dashboard Casamento", page_icon="�
 init_session_state()
 
 st.title("👥 Convidados")
-st.caption("Adiciona e edita convidados. Confirmação: Sim, Não ou Pendente.")
+st.caption(
+    "Adiciona e edita convidados. **Confirmação:** Sim, Não ou Pendente. "
+    "Valores vazios ou inválidos passam a **Pendente** ao atualizar a tabela."
+)
 
 def _apply_convidados():
     state = st.session_state.get(f"editor_{KEY_CONVIDADOS}")
@@ -37,8 +40,9 @@ st.data_editor(
         "Confirmação": st.column_config.SelectboxColumn(
             "Confirmação",
             options=["Pendente", "Sim", "Não"],
-            required=True,
+            required=False,
             width="medium",
+            help="Se deixares vazio, a app trata como Pendente ao gravar.",
         ),
     },
 )

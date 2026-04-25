@@ -177,6 +177,33 @@ COLUNAS_ESPERADAS = {
     KEY_CRONOGRAMA: ["Hora", "Atividade", "Local", "Notas"],
 }
 
+_CONVIDADOS_CONFIRMACAO_OK = {"sim", "não", "nao", "pendente"}
+
+
+def _filter_convidados_deleted_rows(df: pd.DataFrame, deleted_ints: list[int]) -> list[int]:
+    """
+    O data_editor com SelectboxColumn(required=True) pode enviar deleted_rows para
+    linhas ainda sem valor em Confirmação ao editar outra linha. Não apagamos
+    essas linhas se tiverem qualquer outro campo preenchido.
+    """
+    out: list[int] = []
+    for idx in deleted_ints:
+        if idx < 0 or idx >= len(df):
+            continue
+        row = df.iloc[idx]
+        c = str(row.get("Confirmação", "")).strip().lower()
+        if c in _CONVIDADOS_CONFIRMACAO_OK:
+            out.append(idx)
+            continue
+        nome = str(row.get("Nome", "")).strip()
+        contacto = str(row.get("Contacto", "")).strip()
+        mesa = str(row.get("Mesa", "")).strip()
+        notas = str(row.get("Notas", "")).strip()
+        if nome or contacto or mesa or notas:
+            continue
+        out.append(idx)
+    return out
+
 
 def apply_data_editor_changes(
     data_key: str,
@@ -198,13 +225,30 @@ def apply_data_editor_changes(
         cols = COLUNAS_ESPERADAS.get(data_key, df.columns.tolist())
     defaults = default_value_for_new_rows or {}
 
+    # Alguns eventos do data_editor (especialmente ao editar uma linha recém-criada)
+    # podem chegar como edited_rows com índices > len(df) e sem added_rows. Em vez
+    # de ignorar (o que "apaga" visualmente a linha), estendemos o df com linhas vazias.
+    edited_keys = list(editor_state.get("edited_rows", {}).keys())
+    edited_ints: list[int] = []
+    for k in edited_keys:
+        try:
+            edited_ints.append(int(k))
+        except (TypeError, ValueError):
+            continue
+    max_idx = max(edited_ints) if edited_ints else -1
+    if max_idx >= len(df):
+        missing = (max_idx + 1) - len(df)
+        if missing > 0:
+            blank_row = {c: defaults.get(c, "" if data_key != KEY_ORCAMENTO else 0.0) for c in cols}
+            df = pd.concat([df, pd.DataFrame([blank_row] * missing)], ignore_index=True)
+
     # 1) edited_rows: {row_index: {col: value}} (índices podem vir como str do estado do widget)
     for idx_raw, changes in editor_state.get("edited_rows", {}).items():
         try:
             idx = int(idx_raw)
         except (TypeError, ValueError):
             continue
-        if idx < 0 or idx >= len(df):
+        if idx < 0:
             continue
         for col, val in changes.items():
             if data_key == KEY_ORCAMENTO and col == "Total Pago":
@@ -220,6 +264,8 @@ def apply_data_editor_changes(
             deleted_ints.append(int(x))
         except (TypeError, ValueError):
             continue
+    if data_key == KEY_CONVIDADOS:
+        deleted_ints = _filter_convidados_deleted_rows(df, deleted_ints)
     for idx in sorted(deleted_ints, reverse=True):
         if 0 <= idx < len(df):
             df = df.drop(df.index[idx]).reset_index(drop=True)
@@ -256,6 +302,10 @@ def prepare_table_df(key: str, df: pd.DataFrame) -> pd.DataFrame:
         if c not in out.columns:
             out[c] = ""
     out = out[cols].fillna("").astype(str)
+    if key == KEY_CONVIDADOS and "Confirmação" in out.columns:
+        s = out["Confirmação"].astype(str).str.strip()
+        low = s.str.lower()
+        out["Confirmação"] = s.where(low.isin(_CONVIDADOS_CONFIRMACAO_OK), "Pendente")
     return out.reset_index(drop=True)
 
 

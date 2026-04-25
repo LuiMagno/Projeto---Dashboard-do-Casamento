@@ -1,0 +1,5 @@
+[browser]
+# Evita scripts de telemetria/analytics no frontend (reduz ruído no console,
+# especialmente com AdBlock, e melhora privacidade).
+gatherUsageStats = false
+
